@@ -1,0 +1,242 @@
+---
+title: "Examining results Stochastic MT3DMS run"
+author: "G. Bier"
+output:
+  html_notebook:
+    toc: yes
+  html_document:
+    toc: yes
+    df_print: paged
+---
+
+# Introduction
+With this markdown you can visualize the different central mass moments from the stochastic MT3DMS model run.
+
+With the `COVxy` you can run an animation showing how the plume is ditributed in the domain during time.
+
+
+# Read the data
+The `read_stoch_MT3DMS.R` script should be run to determine the central mass moments for all the stochastic MT3DMS
+
+```{r}
+rm(list = ls())  # clean the memory
+library(gifski) #package required for animating the displacement of the plumes
+mm_data = read.csv(file = "stoch_MM_data.csv")
+```
+
+# Calculate some statistics of the time series
+It could be interesting to have a look at the average and standard deviation central mass moments
+
+```{r results='hide'}
+M0 = c()
+M0mean = c()
+M0sd = c()
+M1x = c()
+M1xmean = c()
+M1xsd = c()
+M1y = c()
+M1ymean = c()
+M1ysd = c()
+M2x = c()
+M2xmean = c()
+M2xsd = c()
+M2y = c()
+M2ymean = c()
+M2ysd = c()
+
+for (i in 1:length(mm_data[,1]))  # time steps
+{
+  for (j in 0:9) # different central moments
+  {
+    M0 = c(M0,mm_data[i,(3 + j*6)])
+    M1x = c(M1x,mm_data[i,(4 + j*6)])
+    M1y = c(M1y,mm_data[i,(5 + j*6)])
+    M2x = c(M2x,mm_data[i,(6 + j*6)])
+    M2y = c(M2y,mm_data[i,(7 + j*6)])
+  }
+  print(paste("reading time step :",i))
+  #print(M0)      
+  M0mean = c(M0mean,mean(M0))
+  M0sd = c(M0sd,sd(M0))
+  M0 = c()
+  #print(M1x)
+  M1xmean = c(M1xmean,mean(M1x))
+  M1xsd = c(M1xsd,sd(M1x))
+  M1x = c()
+  #print(M1y)
+  M1ymean = c(M1ymean,mean(M1y))
+  M1ysd = c(M1ysd,sd(M1y))
+  M1y = c()
+  #print(M2x)
+  M2xmean = c(M2xmean,mean(M2x))
+  M2xsd = c(M2xsd,sd(M2x))
+  M2x = c()
+  #print(M2y)
+  M2ymean = c(M2ymean,mean(M2y))
+  M2ysd = c(M2ysd,sd(M2y))
+  M2y = c()
+}
+
+
+
+
+
+```
+
+## Adding two plot functions for evaluation
+
+`plotMM_mean_sd(mm = string)` plots the mean and standard deviations of that mean of the choosen central mass moment
+The argument `mm` should be a string holding the name of this central mass moment variable.
+
+`plotMM_all(mm = string)` plot all the time series of `mm`
+The argument `mm` should be a string holding the name of this central mass moment variable.
+
+
+```{r}
+plotMM_mean_sd = function(mm)
+{
+  if(!is.character(mm))
+  {
+    stop("Variable should be a string, so with quotes")
+  }
+  MMmean= (paste0(mm,"mean"))
+  mean = eval(as.name(MMmean))
+  MMsd = paste0(mm,"sd")
+  sd = eval(as.name(MMsd))
+  plt.range = c(min(mean)-max(sd),max(mean)+max(sd),
+                main = paste("Central mass moment", mm))
+ plot(mm_data$pts,mean, col = "blue",lwd =2,type = "o")
+ lines(mm_data$pts,mean+sd, col = "red",lty = "dashed")
+ lines(mm_data$pts,mean-sd, col = "red",lty = "dashed")
+ grid()
+}
+
+plotMM_mean_sd("M0")
+plotMM_mean_sd("M1x")
+plotMM_mean_sd("M1y")
+plotMM_mean_sd("M2x")
+plotMM_mean_sd("M2y")
+
+
+col.set = rainbow(n=10)
+
+###just for checking the colors
+plot(1,1,type = "p", xlim = c(0,10),ylim = c(0,10),
+     pch = 16, cex=2,col=col.set[1])
+for (i in 2:length(col.set))
+{
+points(i,i,pch = 16, cex=2,col=col.set[i] )
+}
+###just for checking the colors
+
+plotMM_all = function(mm)
+{
+  if(!is.character(mm))
+  {
+    stop("Variable should be a string, so with quotes")
+  }
+
+  
+  
+ mm.index = grep(pattern = mm, x=names(mm_data))
+ plot(mm_data$pts,mm_data[,mm.index[1]],
+      ylim = c(min(mm_data[,mm.index]),max(mm_data[,mm.index])),
+      col = col.set[1],type="l")
+ title(paste("Central mass moments of ", mm))
+ for (i in 2:length(mm.index))
+ {
+   lines(mm_data$pts,mm_data[,mm.index[i]],col=col.set[i])
+ }
+   grid()
+}
+
+plotMM_all("M0")
+plotMM_all("M1x")
+plotMM_all("M1y")
+plotMM_all("M2x")
+plotMM_all("M2y")
+```
+
+## Animation of the plume displacement
+
+Below an animation of the displace of the "statistical" plume which is based on the correlation matrix
+This matrix is calculated by
+
+$$ 
+COR(x,y) = \frac{COV(x,y)}{\sigma x \sigma y}\\
+ \mathbf C_{x,y} = \begin{bmatrix}
+ 1 & COR(x,y)\\
+ COR(x,y) & 1\\
+ \end {bmatrix}
+$$
+To create the "statistical plume" the packages `ellipse` need to be installed and loaded. The `gifski` package is also required  for creating the animation.
+The animation within the html document need to knitted (cannot be generated with *preview* only)
+
+```{r animation.hook='gifski', interval= 0.25}
+library(ellipse)
+cov.index = grep("COVxy", names(mm_data))
+COVxy = mm_data[,cov.index[10]]
+m2x.index = grep("M2x", names(mm_data))
+M2x = mm_data[,m2x.index[10]]
+m2y.index = grep("M2y", names(mm_data))
+M2y = mm_data[,m2y.index[10]]
+m1x.index = grep("M1x",names(mm_data))
+M1x = mm_data[,m1x.index[10]]
+m1y.index = grep("M1y", names(mm_data))
+M1y = mm_data[,m1y.index[10]]
+
+col.set = rainbow(10,alpha =0.2)
+
+old.par = par(no.readonly = TRUE)  #to save the original plotting parameters
+
+
+for (i in 1:length(mm_data$pts))#requires gifski and ellipse packages!!
+{ 
+  plot(1,1, type = "n", xlim=c(0,40),ylim=c(0,20),xlab= "distance (m)",ylab = "height (m)")
+ 
+  for (p in 1: length(cov.index))
+  {
+    M1x = mm_data[,m1x.index[p]]
+    M1y = mm_data[,m1y.index[p]]
+    M2x = mm_data[,m2x.index[p]]
+    M2y = mm_data[,m2y.index[p]]
+    COVxy = mm_data[,cov.index[p]]
+    
+    
+    corxy = COVxy[i]/sqrt(M2x[i] * M2y[i])
+    M  = matrix(c(1,corxy,corxy,1),ncol = 2, byrow=TRUE) #the correlation matrix seems to be required for ellipse
+    par(new = TRUE)
+    #plot(M1x[1:i],M1y[1:i],type="l",xlim=c(2,40),asp=1,col=col.set[p],lwd=2,
+    #     main=paste("time=",mm_data$pts[i]),xlab="x",ylab="y")
+    lines(M1x[1:i],M1y[1:i],col=col.set[p])
+    points(M1x[i],M1y[i],pch=20,col=col.set[p],cex=2)
+    #polygon(ellipse(M,scale=c(M2x[i],M2y[i]),centre=c(M1x[i],M1y[i]),level=0.68,fill=TRUE),col=rgb(0,0,1,0.2),border=NA)
+    polygon(ellipse(M,scale=0.1*c(M2x[i],M2y[i]),centre=c(M1x[i],M1y[i]),level=0.68,fill=TRUE),col=col.set[p],border=NA)
+    grid(col="black")
+  }
+}
+ par = old.par
+
+```
+### plotting individual plumes
+
+```{r}
+
+# COVxy = mm_data[,cov.index[3]]
+# for (i in 1:length(mm_data$pts))#requires gifski and ellipse packages!!
+# {
+#   corxy = COVxy[i]/sqrt(M2x[i] * M2y[i])
+#   print(corxy)
+#   M  = matrix(c(1,corxy,corxy,1),ncol = 2, byrow=TRUE) #the correlation matrix seems to be required for ellipse
+# 
+#   plot(M1x[1:i],M1y[1:i],type="l",xlim=c(2,40),asp=1,col=col.set[1],lwd=2,
+#        main=paste("time=",mm_data$pts[i]),xlab="x",ylab="y")
+#   points(M1x[i],M1y[i],pch=20,col=col.set[1],cex=2)
+#   #polygon(ellipse(M,scale=c(M2x[i],M2y[i]),centre=c(M1x[i],M1y[i]),level=0.68,fill=TRUE),col=rgb(0,0,1,0.2),border=NA)
+#   polygon(ellipse(M,scale=0.1*c(M2x[i],M2y[i]),centre=c(M1x[i],M1y[i]),level=0.68,fill=TRUE),col=col.set[1],border=NA)
+#   grid(col="black")
+# }
+
+```
+
+
