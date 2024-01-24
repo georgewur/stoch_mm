@@ -28,10 +28,10 @@ library(sp)
 
 ### 1.1.1. Set the seed
 
-With the function below you can set the seed (a random number) so you can can reproduce exactly the samen k-fields
+With the function below you can set the seed (a random number) so you can can reproduce exactly the same k-fields
 
 ```{r}
-set.seed(11012024)
+set.seed(24012024)
 ```
 
 
