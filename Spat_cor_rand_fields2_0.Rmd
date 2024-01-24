@@ -1,0 +1,175 @@
+---
+title: "Spatially correlated random fields"
+output: html_notebook
+---
+
+# 1. Introduction
+
+Based on url: <http://santiago.begueria.es/2010/10/generating-spatially-correlated-random-fields-with-r/>
+
+
+**Unconditional Gaussian simulation using gstat**
+
+Spatial modellers commonly use the term unconditional Gaussian simulation to refer to the process of generating spatially correlated random fields. For comparison purposes, the Figure 0 shows an example of a random field with no spatial correlation. The value of the measured property at one given cell is completely independent of the values of that property at neighbouring cells. This situation is very seldom (or I perhaps should better say never) found in nature, since spatially distributed variables always have a certain level of autocorrelation, i.e. co-variance between neighbours. This is often mentioned as the 'geographical law', stating that closer locations tend to have similar properties.
+
+Generating spatially correlated random fields is interesting because it makes it possible testing different issues related to the statistical analysis of spatial data.
+
+
+
+## 1.1. Generating the spatial field
+
+We are going to use the `gstat` library for generating the field and the `sp` library for some manipulations with spatial data (e.g. `gridded, spplot` ), so we start by loading them:
+
+```{r}
+rm(list=ls()) #cleaning the environment
+library(gstat)#load packages
+library(sp)
+```
+
+### 1.1.1. Set the seed
+
+With the function below you can set the seed (a random number) so you can can reproduce exactly the samen k-fields
+
+```{r}
+set.seed(11012024)
+```
+
+
+We create a `num_col` x `num_row` grid, and we convert it into a data frame (xyz structure) by taking all possible combinations of the x and y coordinates:
+
+```{r}
+
+num_row = 20
+num_col = 40
+num_values = num_row*num_col
+  
+xy <- expand.grid(1:num_row, 1:num_col) #to set up the grid 
+names(xy) <- c("x","y")
+```
+
+ 
+
+### 1.1.1. Spatial properties random field
+
+The statistical properties are given below:
+
+-   `k_mean` : the mean of the random field (k for hydraulic conductivity)
+
+-   `k_sd` : the standard deviation around the mean k value
+
+The real mean and standard deviation need to be scaled since the `ln(k)` is normal distribution resulting in a lognormal `k` distribution to be used in MODFLOW.
+
+#### 1.1.1.1. Set the mean and standard deviation of the conductivity field
+
+```{r}
+# statistics
+k_mean = 7.50 
+k_sd = 3.0
+
+scaled_mean = log(k_mean^2/sqrt(k_mean^2+k_sd^2))
+scaled_stdev = sqrt(log((k_mean^2+k_sd^2)/k_mean^2))
+
+
+```
+
+### 1.1.2. Simulation model
+
+Defining the spatial model as a `gstat` object (text from reference):
+
+`g.dummy <- gstat(formula=z~1, locations=~x+y, dummy=T, beta=1, model=vgm(psill=0.025, range=5, model='Exp'), nmax=20)`
+
+with:
+
+-   `g.dummy` : the object which contains the info for the simulation of the spatially correlated random field
+
+-   `formula` :
+
+    defines the dependent variable (z) as a linear model of independent variables. For ordinary and simple kriging we can use the formula `z~1`; for simple kriging it is necessary to define a beta parameter too (see below); for universal kriging, if `z` is linearly dependent on `x` and `y` use the formula `z~x+y`. We are using simple kriging here.
+
+-   `locations` define the data coordinates, e.g. `~x+y` in our case here.
+
+-   `dummy` is a logical value, and it needs to be TRUE for unconditional simulation.
+
+-   `beta` is used only for simple kriging, and is a vector with the trend coefficients (including an intercept); if no independent variables are defined the model only contains an intercept, i.e. the simple kriging mean.
+
+-   `model` defines the variogram model, as defined by a call to `vgm`.
+
+    -   `psill` : (scaled) variance of the k field (after this, values are uncorrelated). Also called contribution
+
+    -   `range` : correlation length alike (distance at which samples/values become independent of each other)
+
+    -   `model` : variogram model type; `Exp` :Exponential, `Gau` : Gaussian, `Sph` : Spherical and more
+
+-   `nmax` defines the number of nearest observations that should be used for a kriging prediction or simulation.
+
+#### 1.1.2.1. Setting the autocorrelation length
+
+```{r}
+
+range = 5 #low value means hardly any correlation length
+nmax = 5 # low values with low range means very random simulation
+
+```
+
+creation of the model
+
+```{r}
+g.dummy <- gstat(formula=z~1, locations=~x+y, dummy=T, beta=scaled_mean, model=vgm(psill=scaled_stdev^2, model="Exp",range=range), nmax=nmax)
+```
+ 
+ 
+
+2.  Running Simulations
+
+With `g.dummy` the model is set up to start simulating.
+
+-   `nsim` : the number of simulations/fields to generate
+
+-   `predict` : function to simulate/generate the field based on the chosen kriging method
+
+    -   `g.dummy` : the model object we have set up
+
+    -   `newdata` : data frame created earlier to write the results to (so a grid like data frame)
+
+-   `gridded` :
+
+```{r}
+nsim = 10 # number of realisations
+k_fields <- predict(g.dummy, newdata=xy, nsim = nsim)
+gridded(k_fields) = ~x+y
+
+
+```
+
+ 
+
+3.  Viewing and analyzing the results
+
+To see if the results are as expected it is practical to have a look at the results with use of e.g. histograms of the data.
+
+```{r}
+spplot(k_fields)
+hist(k_fields$sim1)
+cat('scaled mean log(k): ',mean(k_fields$sim1), 'scaled standard deviation log(k) : ', sd(k_fields$sim1))
+hist(exp(k_fields$sim1))
+cat('simulated k-field mean :',mean(exp(k_fields$sim1)), 'and standard deviation :', sd(exp(k_fields$sim1)))
+#real_k_field =
+#spplot(k_fields,formula= exp(sim1)~x+y)
+spplot(k_fields,formula= exp(z)~x+y|name)
+```
+
+# 4. Exporting the data to a txt file
+
+The data contained in the k_fields structure will be exported to a simple one column per simulation format ASCII text file.
+
+```{r}
+data_kvalue = as.data.frame(matrix(ncol=nsim, nrow=num_values))
+for (i in 1:nsim){
+  data_kvalue[i] = round(exp(k_fields@data[,i]),2) #setting up the data.frame for     the data
+}
+#writing the data fo a file
+write.table(data_kvalue,file = "heterogenic_kfields.txt", 
+            append = FALSE, sep = "\t", dec = ".", row.names= FALSE, col.names=TRUE)
+```
+
+ 
