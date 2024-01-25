@@ -2,26 +2,26 @@
 title: "Examining results Stochastic MT3DMS run"
 author: "G. Bier"
 output:
-  html_notebook:
-    toc: yes
   html_document:
     toc: yes
     df_print: paged
+  html_notebook:
+    toc: yes
 ---
 
 # Introduction
 With this markdown you can visualize the different central mass moments from the stochastic MT3DMS model run.
 
-With the `COVxy` you can run an animation showing how the plume is ditributed in the domain during time.
+With the `COVxy` you can run an animation showing how the plume is distributed in the domain during time.
 
 
 # Read the data
-The `read_stoch_MT3DMS.R` script should be run to determine the central mass moments for all the stochastic MT3DMS
+The `read_stoch_MT3DMS.R` script should be run first to determine the central mass moments for all the stochastic MT3DMS
 
 ```{r}
 rm(list = ls())  # clean the memory
 library(gifski) #package required for animating the displacement of the plumes
-mm_data = read.csv(file = "stoch_MM_data.csv")
+mm_data = read.csv(file = "stoch_MM_data.csv")  #read the data coming from the stochastic run 
 ```
 
 # Calculate some statistics of the time series
@@ -103,9 +103,18 @@ plotMM_mean_sd = function(mm)
   mean = eval(as.name(MMmean))
   MMsd = paste0(mm,"sd")
   sd = eval(as.name(MMsd))
-  plt.range = c(min(mean)-max(sd),max(mean)+max(sd),
-                main = paste("Central mass moment", mm))
- plot(mm_data$pts,mean, col = "blue",lwd =2,type = "o")
+  if (mm == "M2x" | mm == "M2y"){
+    ylabel = paste(mm, " in Length^2 (m2)")} 
+  if (mm == "M0"){
+    ylabel = paste(mm, "in Mass (kg)")}
+  if(mm == "M1x" | mm == "M1y"){
+    ylabel = paste(mm, "in Length (m)")}
+  
+  
+  plt.range = c(min(mean)-max(sd),max(mean)+max(sd))
+ plot(mm_data$pts,mean, col = "blue",lwd =2,type = "o",
+      ylim = plt.range, ylab = ylabel, xlab = "Time in d",
+      main = paste("Average and stdev of centrall MM: ",mm))
  lines(mm_data$pts,mean+sd, col = "red",lty = "dashed")
  lines(mm_data$pts,mean-sd, col = "red",lty = "dashed")
  grid()
@@ -135,12 +144,20 @@ plotMM_all = function(mm)
   {
     stop("Variable should be a string, so with quotes")
   }
+  
+  if (mm == "M2x" | mm == "M2y"){
+    ylabel = paste(mm, " in Length^2 (m2)")} 
+  if (mm == "M0"){
+    ylabel = paste(mm, "in Mass (kg)")}
+  if(mm == "M1x" | mm == "M1y"){
+    ylabel = paste(mm, "in Length (m)")}
 
   
   
  mm.index = grep(pattern = mm, x=names(mm_data))
  plot(mm_data$pts,mm_data[,mm.index[1]],
       ylim = c(min(mm_data[,mm.index]),max(mm_data[,mm.index])),
+      ylab = ylabel, xlab = "Time in d",
       col = col.set[1],type="l")
  title(paste("Central mass moments of ", mm))
  for (i in 2:length(mm.index))
@@ -208,6 +225,7 @@ for (i in 1:length(mm_data$pts))#requires gifski and ellipse packages!!
     par(new = TRUE)
     #plot(M1x[1:i],M1y[1:i],type="l",xlim=c(2,40),asp=1,col=col.set[p],lwd=2,
     #     main=paste("time=",mm_data$pts[i]),xlab="x",ylab="y")
+    title(main = paste("time=",format(mm_data$pts[i], digits = 2)))
     lines(M1x[1:i],M1y[1:i],col=col.set[p])
     points(M1x[i],M1y[i],pch=20,col=col.set[p],cex=2)
     #polygon(ellipse(M,scale=c(M2x[i],M2y[i]),centre=c(M1x[i],M1y[i]),level=0.68,fill=TRUE),col=rgb(0,0,1,0.2),border=NA)
