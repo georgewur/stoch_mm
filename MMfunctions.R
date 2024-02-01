@@ -51,6 +51,8 @@ readucn <- function(ucrootname, NLAY, NTTS){
     TEXT <- readChar(to.read, 16)
     NC <- readBin(to.read, integer(), n = 1)
     NR <- readBin(to.read, integer(), n = 1)
+    #print(NC) #GB
+    #print(NR) #GB
     LAY <- readBin(to.read, integer(), n = 1)
     CONC <- readBin(to.read, double(), size = 4, n = NR * NC, endian = "little")
     out <- list(TRANS, STP, PER, TIME, TEXT, NC, NR, LAY, CONC)
@@ -59,6 +61,7 @@ readucn <- function(ucrootname, NLAY, NTTS){
   for(Q in 1:NTTS){
     for(K in 1:NLAY){
       dat[[length(dat) + 1]] <- readblock()
+      print(paste("loading time step :",Q))
     }
   }
   close(to.read)
