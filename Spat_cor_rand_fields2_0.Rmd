@@ -43,7 +43,7 @@ num_row = 72
 num_col = 144
 num_values = num_row*num_col
   
-xy <- expand.grid(1:num_row, 1:num_col) #to set up the grid 
+xy <- expand.grid(1:num_col, 1:num_row) #to set up the grid 
 names(xy) <- c("x","y")
 ```
 
