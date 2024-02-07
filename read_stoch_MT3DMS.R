@@ -47,7 +47,7 @@ start.time = Sys.time()
 for (i in 1: nr.sim)
 {
   if (i < 10 ) setwd(paste0(sto_subdirs,"/00",i))
-  if( i >= 10) setwd(paste0(sto_subdirs,"/0",i))
+  if( i >= 10 && i < 100 ) setwd(paste0(sto_subdirs,"/0",i))
   if( i >= 100) setwd(paste0(sto_subdirs,"/",i))
   trans_conc = readucn("MT3D001",NLAY = 1,NTTS = NTTS )
   ##pts is a vector containing all times steps and required for the calculation of the transient mass moments.
@@ -70,7 +70,7 @@ for (i in 1: nr.sim)
   cat(paste("calculating COVXY for run number ", i),"\n")
   stoch_MM_df = cbind(stoch_MM_df,M0,M1x,M1y,M2x,M2y,COVxy)
   one.calculation = Sys.time()-start.time
-  print(paste("Current calculation time :",Sys.time()-start.time))
+  print(paste("Current calculation time :",Sys.time()-start.time, "Estimated total time: ", as.numeric(one.calculation) * nr.sim, "mins"))
 }
 
 setwd(cur_dir) #go back to the base directory where this file is located
