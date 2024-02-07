@@ -2,11 +2,11 @@
 title: "Examining results Stochastic MT3DMS run"
 author: "G. Bier"
 output:
+  html_notebook:
+    toc: yes
   html_document:
     toc: yes
     df_print: paged
-  html_notebook:
-    toc: yes
 ---
 
 # Introduction
@@ -21,7 +21,7 @@ The `read_stoch_MT3DMS.R` script should be run first to determine the central ma
 ```{r}
 rm(list = ls())  # clean the memory
 library(gifski) #package required for animating the displacement of the plumes
-mm_data = read.csv(file = "stoch_MM_data.csv")  #read the data coming from the stochastic run 
+mm_data = read.csv(file = "stoch_144_72_k7_5_std7_5_sim50_MT3DMS.csv")  #read the data coming from the stochastic run 
 ```
 
 # Calculate some statistics of the time series
@@ -114,7 +114,7 @@ plotMM_mean_sd = function(mm)
   plt.range = c(min(mean)-max(sd),max(mean)+max(sd))
  plot(mm_data$pts,mean, col = "blue",lwd =2,type = "o",
       ylim = plt.range, ylab = ylabel, xlab = "Time in d",
-      main = paste("Average and stdev of centrall MM: ",mm))
+      main = paste("Average and stdev of central MM: ",mm))
  lines(mm_data$pts,mean+sd, col = "red",lty = "dashed")
  lines(mm_data$pts,mean-sd, col = "red",lty = "dashed")
  grid()
@@ -127,10 +127,11 @@ plotMM_mean_sd("M2x")
 plotMM_mean_sd("M2y")
 
 
-col.set = rainbow(n=10)
+nr.set = (length(mm_data[1,]) - 2)/6 
+col.set = rainbow(n=nr.set)
 
 ###just for checking the colors
-plot(1,1,type = "p", xlim = c(0,10),ylim = c(0,10),
+plot(1,1,type = "p", xlim = c(0,nr.set),ylim = c(0,nr.set),
      pch = 16, cex=2,col=col.set[1])
 for (i in 2:length(col.set))
 {
@@ -173,6 +174,30 @@ plotMM_all("M1y")
 plotMM_all("M2x")
 plotMM_all("M2y")
 ```
+## Addtional plot for **D11** macroscopic dispersion
+
+```{r}
+dM2xmean = diff(M2xmean)
+dpts = diff(mm_data$pts)
+plot(mm_data$pts[-length(dpts)], dM2xmean/(2*dpts), type = "o",lwd = 2)
+xdata = mm_data$pts[-length(dpts)]
+ydata = diff(M2xmean)/(2*dpts)
+fitD11_lin = lm(ydata ~ xdata)
+fitD11_ln = lm(ydata ~log(xdata))
+abline(fitD11_lin, col = "blue")
+abline(fitD11_ln, col = "red")
+lines(fitD11_ln$fitted.values,col = "red")
+grid()
+
+sdM2xmean = sqrt(M2xmean)
+plot(mm_data$pts,sdM2xmean, type = "o",col = "blue",lwd = 2,
+     main = "Standard deviation of M2x, spreading in x in m")
+grid()
+fit_sdMean = lm(sdM2xmean ~ mm_data$pts)
+abline(fit_sdMean, col = "red")
+```
+
+
 
 ## Animation of the plume displacement
 
@@ -202,14 +227,15 @@ M1x = mm_data[,m1x.index[10]]
 m1y.index = grep("M1y", names(mm_data))
 M1y = mm_data[,m1y.index[10]]
 
-col.set = rainbow(10,alpha =0.2)
+col.set = rainbow(nr.set,alpha =0.2)
+col.center = rainbow(nr.set,alpha = 1)
 
 old.par = par(no.readonly = TRUE)  #to save the original plotting parameters
 
 
 for (i in 1:length(mm_data$pts))#requires gifski and ellipse packages!!
 { 
-  plot(1,1, type = "n", xlim=c(0,40),ylim=c(0,20),xlab= "distance (m)",ylab = "height (m)")
+  plot(1,1, type = "n", xlim=c(0,36),ylim=c(0,18),xlab= "distance (m)",ylab = "height (m)")
  
   for (p in 1: length(cov.index))
   {
@@ -227,9 +253,10 @@ for (i in 1:length(mm_data$pts))#requires gifski and ellipse packages!!
     #     main=paste("time=",mm_data$pts[i]),xlab="x",ylab="y")
     title(main = paste("time=",format(mm_data$pts[i], digits = 2)))
     lines(M1x[1:i],M1y[1:i],col=col.set[p])
-    points(M1x[i],M1y[i],pch=20,col=col.set[p],cex=2)
+    points(M1x[i],M1y[i],pch=20,col=col.center[p],cex=2)
     #polygon(ellipse(M,scale=c(M2x[i],M2y[i]),centre=c(M1x[i],M1y[i]),level=0.68,fill=TRUE),col=rgb(0,0,1,0.2),border=NA)
-    polygon(ellipse(M,scale=0.1*c(M2x[i],M2y[i]),centre=c(M1x[i],M1y[i]),level=0.68,fill=TRUE),col=col.set[p],border=NA)
+    #scale.ellipse = sqrt(M2x[i]+M2y[i])
+    polygon(ellipse(M,scale=c(M2x[i]/M2xmean[i],M2y[i]/M2ymean[i]),centre=c(M1x[i],M1y[i]),level=0.68,fill=TRUE),col=col.set[p],border=NA)
     grid(col="black")
   }
 }
