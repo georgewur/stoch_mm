@@ -2,11 +2,11 @@
 title: "Examining results Stochastic MT3DMS run"
 author: "G. Bier"
 output:
-  html_notebook:
-    toc: yes
   html_document:
     toc: yes
     df_print: paged
+  html_notebook:
+    toc: yes
 ---
 
 # Introduction
@@ -21,7 +21,11 @@ The `read_stoch_MT3DMS.R` script should be run first to determine the central ma
 ```{r}
 rm(list = ls())  # clean the memory
 library(gifski) #package required for animating the displacement of the plumes
-mm_data = read.csv(file = "stoch_144_72_k7_5_std7_5_sim50_MT3DMS.csv")  #read the data coming from the stochastic run 
+cmm_file = "stoch_144_72_k75_std15_sim50_MT3DMS.csv"
+mm_data = read.csv(file = cmm_file)  #read the data coming from the stochastic run 
+####dim_file and dim.dat are only here for proper scaling of the plume shapes
+dim_file = paste0(substr(cmm_file,1,nchar(cmm_file) -3),"dim")
+dim.dat = read.table(file = dim_file)
 ```
 
 # Calculate some statistics of the time series
@@ -85,7 +89,7 @@ for (i in 1:length(mm_data[,1]))  # time steps
 
 ## Adding two plot functions for evaluation
 
-`plotMM_mean_sd(mm = string)` plots the mean and standard deviations of that mean of the choosen central mass moment
+`plotMM_mean_sd(mm = string)` plots the mean and standard deviations of that mean of the chosen central mass moment
 The argument `mm` should be a string holding the name of this central mass moment variable.
 
 `plotMM_all(mm = string)` plot all the time series of `mm`
@@ -195,6 +199,13 @@ plot(mm_data$pts,sdM2xmean, type = "o",col = "blue",lwd = 2,
 grid()
 fit_sdMean = lm(sdM2xmean ~ mm_data$pts)
 abline(fit_sdMean, col = "red")
+
+plot(sqrt(mm_data$pts),sdM2xmean, type = "o",col = "blue",lwd = 2,
+     main = "Standard deviation of M2x, spreading in x in m")
+grid()
+fit_sdMean = lm(sdM2xmean ~ sqrt(mm_data$pts))
+abline(fit_sdMean, col = "red")
+
 ```
 
 
@@ -215,27 +226,36 @@ To create the "statistical plume" the packages `ellipse` need to be installed an
 The animation within the html document need to knitted (cannot be generated with *preview* only)
 
 ```{r animation.hook='gifski', interval= 0.25}
-library(ellipse)
-cov.index = grep("COVxy", names(mm_data))
-COVxy = mm_data[,cov.index[10]]
-m2x.index = grep("M2x", names(mm_data))
-M2x = mm_data[,m2x.index[10]]
-m2y.index = grep("M2y", names(mm_data))
-M2y = mm_data[,m2y.index[10]]
-m1x.index = grep("M1x",names(mm_data))
-M1x = mm_data[,m1x.index[10]]
-m1y.index = grep("M1y", names(mm_data))
-M1y = mm_data[,m1y.index[10]]
 
-col.set = rainbow(nr.set,alpha =0.2)
-col.center = rainbow(nr.set,alpha = 1)
+#their should be a *.dim file available containing the dimensions of the  model
+
+
+library(ellipse)
+cov.index = grep("Covxy", names(mm_data))
+m2x.index = grep("M2x", names(mm_data))
+m2y.index = grep("M2y", names(mm_data))
+m1x.index = grep("M1x",names(mm_data))
+m1y.index = grep("M1y", names(mm_data))
+
+col.set = rainbow(nr.set, alpha = 0.2)
+col.center = rainbow(nr.set)
+# col.set = topo.colors(nr.set,alpha =0.2)
+# col.center = topo.colors(nr.set,alpha = 1)
+# col.set = hcl.colors(n = nr.set,palette = "viridis",alpha =0.2)
+# col.center = hcl.colors(n = nr.set,palette = "viridis")
+# col.set = cm.colors(nr.set,alpha = 0.2)
+# col.center = cm.colors(nr.set)
+# col.set = heat.colors(nr.set, alpha = 0.2)
+# col.center = heat.colors(nr.set)
 
 old.par = par(no.readonly = TRUE)  #to save the original plotting parameters
 
+y.model = dim.dat$nr.rows*dim.dat$dy+dim.dat$dy/2
+x.model = dim.dat$nr.cols*dim.dat$dx+dim.dat$dx/2
 
-for (i in 1:length(mm_data$pts))#requires gifski and ellipse packages!!
+for (i in 1:length(mm_data$pts))#requires gifski and ellipse package!!
 { 
-  plot(1,1, type = "n", xlim=c(0,36),ylim=c(0,18),xlab= "distance (m)",ylab = "height (m)")
+  plot(1,1, type = "n", ylim=c(0,y.model),xlim=c(0,x.model),xlab= "distance (m)",ylab = "height (m)")
  
   for (p in 1: length(cov.index))
   {
@@ -253,10 +273,11 @@ for (i in 1:length(mm_data$pts))#requires gifski and ellipse packages!!
     #     main=paste("time=",mm_data$pts[i]),xlab="x",ylab="y")
     title(main = paste("time=",format(mm_data$pts[i], digits = 2)))
     lines(M1x[1:i],M1y[1:i],col=col.set[p])
-    points(M1x[i],M1y[i],pch=20,col=col.center[p],cex=2)
+    points(M1x[i],M1y[i],pch=20,col=col.center[p],cex=1)
     #polygon(ellipse(M,scale=c(M2x[i],M2y[i]),centre=c(M1x[i],M1y[i]),level=0.68,fill=TRUE),col=rgb(0,0,1,0.2),border=NA)
     #scale.ellipse = sqrt(M2x[i]+M2y[i])
-    polygon(ellipse(M,scale=c(M2x[i]/M2xmean[i],M2y[i]/M2ymean[i]),centre=c(M1x[i],M1y[i]),level=0.68,fill=TRUE),col=col.set[p],border=NA)
+    #polygon(ellipse(M,scale=c(M2x[i]/M2xmean[i],M2y[i]/M2ymean[i]),centre=c(M1x[i],M1y[i]),level=0.68,fill=F),col=col.set[p],border=NA)
+    polygon(ellipse(M,scale=c(sqrt(M2x[i]),sqrt(M2y[i])),centre=c(M1x[i],M1y[i]),level=0.68,fill=T),col=col.set[p],border=NA)
     grid(col="black")
   }
 }
