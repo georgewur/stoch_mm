@@ -28,7 +28,7 @@ library(sp)
 
 ### 1.1.1. Set the seed
 
-With the function below you can set the seed (a random number) so you can can reproduce exactly the samen k-fields
+With the function below you can set the seed (a random number) so you can can reproduce exactly the same k-fields
 
 ```{r}
 set.seed(01022024)
@@ -57,17 +57,18 @@ The statistical properties are given below:
 
 -   `k_sd` : the standard deviation around the mean k value
 
-The real mean and standard deviation need to be scaled since the `ln(k)` is normal distribution resulting in a lognormal `k` distribution to be used in MODFLOW.
+The real mean and standard deviation need to be scaled since the `ln(k)` is a normal distribution resulting in a lognormal `k` distribution to be used in MODFLOW.
 
 #### 1.1.1.1. Set the mean and standard deviation of the conductivity field
 
 ```{r}
 # statistics
 k_mean = 7.50 
-k_sd = 7.5
+k_sd = 3.0
 
 scaled_mean = log(k_mean^2/sqrt(k_mean^2+k_sd^2))
 scaled_stdev = sqrt(log((k_mean^2+k_sd^2)/k_mean^2))
+#scaled_stdev = sqrt(log(1 + (k_mean^2+k_sd^2)/k_mean^2)) #isn't this the correct transformation?
 
 
 ```
@@ -106,8 +107,8 @@ with:
 
 ```{r}
 
-range = 1 #low value means hardly any correlation length
-nmax = 1 # low values with low range means very random simulation
+range = 5 #low value means hardly any correlation length
+nmax = 5 # low values with low range means very random simulation
 
 ```
 
@@ -134,7 +135,7 @@ With `g.dummy` the model is set up to start simulating.
 -   `gridded` :
 
 ```{r}
-nsim = 250 # number of realizations
+nsim = 50 # number of realizations
 k_fields <- predict(g.dummy, newdata=xy, nsim = nsim)
 gridded(k_fields) = ~x+y
 
@@ -149,6 +150,12 @@ To see if the results are as expected it is practical to have a look at the resu
 
 ```{r}
 spplot(k_fields)
+
+#put the names of the simulations (sim1, sim2...) in a vector
+sim_names = names(k_fields)
+#calculate the mean and standard deviation of these simulation (i.e. the ln(k) distribution)
+
+
 hist(k_fields$sim1)
 cat('scaled mean log(k): ',mean(k_fields$sim1), 'scaled standard deviation log(k) : ', sd(k_fields$sim1))
 hist(exp(k_fields$sim1))
@@ -168,7 +175,7 @@ for (i in 1:nsim){
   data_kvalue[i] = round(exp(k_fields@data[,i]),2) #setting up the data.frame for     the data
 }
 #writing the data fo a file
-write.table(data_kvalue,file = paste0("k_col",num_col,"_row",num_row,"k",k_mean,"sd_k",k_sd,"simnr",nsim,".txt"), 
+write.table(data_kvalue,file = paste0("k_col",num_col,"_row",num_row,"k",k_mean,"sd_k",k_sd,"Ly",range,"simnr",nsim,".txt"), 
             append = FALSE, sep = "\t", dec = ".", row.names= FALSE, col.names=TRUE)
 ```
 
