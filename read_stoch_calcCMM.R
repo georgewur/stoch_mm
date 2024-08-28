@@ -173,7 +173,7 @@ for (i in 1: nr.sim)
     M2y = c(M2y,currentM2y)
     sum_M2xy = 0.0
     
-    # Here the covariance of concentration distribution is calculated
+    # Here the covariance of the concentration distribution is calculated
     # 1/M0 * vol * (x_i - M1x) * (y_i) - M1y) for each time step
     # It consists of a row loop and column loop. So in row order the data is 
     # evaluated. The rows are from the top to the bottom but the y-coordinate
@@ -191,6 +191,7 @@ for (i in 1: nr.sim)
     Covxy = c(Covxy,current.M2xy)
   }
   
+  # all the data is added to a data frame
   stoch_MM_df = cbind(stoch_MM_df,M0,M1x,M1y,M2x,M2y,Covxy)
   ## some lines to track elapsed and remaining time
   avg.elapsed.per.run = as.numeric(difftime(Sys.time(),start.time,units = "secs")/i)
