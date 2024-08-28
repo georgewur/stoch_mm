@@ -17,11 +17,12 @@ With the `COVxy` you can run an animation showing how the plume is distributed i
 
 # Read the data
 The `read_stoch_MT3DMS.R` script should be run first to determine the central mass moments for all the stochastic MT3DMS
+The data is stored in a csv file with the name is based on number of columns, rows, mean_k,sd_k,l_y and the number of simulations like e.g.  `144_72_k70_sdk3_ly10_nrsim250_MT3DMS.csv`. It will also produces a file with the dimensions of the model, e.g. `144_72_k70_sdk3_ly10_nrsim250_MT3DMS.dim`.
 
 ```{r}
 rm(list = ls())  # clean the memory
 library(gifski) #package required for animating the displacement of the plumes
-cmm_file = "stoch_144_72_k75_std15_sim50_MT3DMS.csv"
+cmm_file = "144_72_k70_sdk3_ly10_nrsim250_MT3DMS.csv" #name of the file containing the central mass moments
 mm_data = read.csv(file = cmm_file)  #read the data coming from the stochastic run 
 ####dim_file and dim.dat are only here for proper scaling of the plume shapes
 dim_file = paste0(substr(cmm_file,1,nchar(cmm_file) -3),"dim")
@@ -32,6 +33,7 @@ dim.dat = read.table(file = dim_file)
 It could be interesting to have a look at the average and standard deviation central mass moments
 
 ```{r results='hide'}
+# setting up the containers for the mean and standard deviation of the (central) mass moments
 M0 = c()
 M0mean = c()
 M0sd = c()
@@ -48,43 +50,33 @@ M2y = c()
 M2ymean = c()
 M2ysd = c()
 
-for (i in 1:length(mm_data[,1]))  # time steps
-{
-  for (j in 0:9) # different central moments
-  {
-    M0 = c(M0,mm_data[i,(3 + j*6)])
-    M1x = c(M1x,mm_data[i,(4 + j*6)])
-    M1y = c(M1y,mm_data[i,(5 + j*6)])
-    M2x = c(M2x,mm_data[i,(6 + j*6)])
-    M2y = c(M2y,mm_data[i,(7 + j*6)])
-  }
+##create indexes for the different central mass moments
+M0index = grep("M0",names(mm_data))
+M1xindex = grep("M1x",names(mm_data))
+M1yindex = grep("M1y",names(mm_data))
+M2xindex = grep("M2x",names(mm_data))
+M2yindex = grep("M2y",names(mm_data))
+##
+## now calculate the mean and standard deviation of the central mass moments
+for (i in 1:length(mm_data[,1])) {
   print(paste("reading time step :",i))
-  #print(M0)      
+  M0 = as.matrix(mm_data[i,M0index])
+  M1x = as.matrix(mm_data[i,M1xindex])
+  M1y = as.matrix(mm_data[i,M1yindex])
+  M2x = as.matrix(mm_data[i,M2xindex])
+  M2y = as.matrix(mm_data[i,M2yindex])
   M0mean = c(M0mean,mean(M0))
   M0sd = c(M0sd,sd(M0))
-  M0 = c()
-  #print(M1x)
   M1xmean = c(M1xmean,mean(M1x))
   M1xsd = c(M1xsd,sd(M1x))
-  M1x = c()
-  #print(M1y)
   M1ymean = c(M1ymean,mean(M1y))
   M1ysd = c(M1ysd,sd(M1y))
-  M1y = c()
-  #print(M2x)
   M2xmean = c(M2xmean,mean(M2x))
   M2xsd = c(M2xsd,sd(M2x))
-  M2x = c()
-  #print(M2y)
   M2ymean = c(M2ymean,mean(M2y))
   M2ysd = c(M2ysd,sd(M2y))
-  M2y = c()
+
 }
-
-
-
-
-
 ```
 
 ## Adding two plot functions for evaluation
@@ -118,7 +110,7 @@ plotMM_mean_sd = function(mm)
   plt.range = c(min(mean)-max(sd),max(mean)+max(sd))
  plot(mm_data$pts,mean, col = "blue",lwd =2,type = "o",
       ylim = plt.range, ylab = ylabel, xlab = "Time in d",
-      main = paste("Average and stdev of central MM: ",mm))
+      main = paste("Average and stdev of (central) MM: ",mm))
  lines(mm_data$pts,mean+sd, col = "red",lty = "dashed")
  lines(mm_data$pts,mean-sd, col = "red",lty = "dashed")
  grid()
