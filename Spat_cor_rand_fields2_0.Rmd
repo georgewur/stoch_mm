@@ -149,20 +149,17 @@ gridded(k_fields) = ~x+y
 To see if the results are as expected it is practical to have a look at the results with use of e.g. histograms of the data.
 
 ```{r}
-spplot(k_fields)
-
-#put the names of the simulations (sim1, sim2...) in a vector
-sim_names = names(k_fields)
-#calculate the mean and standard deviation of these simulation (i.e. the ln(k) distribution)
-
-
-hist(k_fields$sim1)
-cat('scaled mean log(k): ',mean(k_fields$sim1), 'scaled standard deviation log(k) : ', sd(k_fields$sim1))
-hist(exp(k_fields$sim1))
-cat('simulated k-field mean :',mean(exp(k_fields$sim1)), 'and standard deviation :', sd(exp(k_fields$sim1)))
-#real_k_field =
-#spplot(k_fields,formula= exp(sim1)~x+y)
-spplot(k_fields,formula= exp(z)~x+y|name)
+#here we show the histograms of the data
+spdf <- as(k_fields, "data.frame")
+for (col in names(spdf)[-1]) {  # assuming the first column is spatial data
+  hist(spdf[[col]], main = paste("Histogram of ln(k)", col), xlab = col, ylab = "Frequency", col = "lightblue", border = "black")
+}
+for (col in names(spdf)[-1]) {  # assuming the first column is spatial data
+  hist(exp(spdf[[col]]), main = paste("Histogram of k", col), xlab = col, ylab = "Frequency", col = "blue", border = "black")
+}
+#here we show the fields in ln(k) and k space
+spplot(k_fields) #plotting the fields in ln space
+spplot(k_fields,formula= exp(z)~x+y|name) #plotting the fields in k space
 ```
 
 # 4. Exporting the data to a txt file
